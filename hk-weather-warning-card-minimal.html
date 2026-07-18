@@ -13,7 +13,7 @@
       font-family: Arial, "Noto Sans TC", sans-serif;
     }
     body { border:2px solid var(--line); border-radius:10px; padding:12px 14px; }
-    .wrap { height:100%; display:grid; grid-template-rows:auto auto 1fr auto; gap:8px; }
+    .wrap { height:100%; display:grid; grid-template-rows:auto auto 1fr; gap:8px; }
     .title { font-size:15px; line-height:1.02; font-weight:700; border-bottom:2px solid var(--line); padding-bottom:6px; }
     .status { display:none; }
     .main { display:flex; flex-direction:column; gap:8px; overflow:hidden; }
@@ -25,7 +25,6 @@
       font-size:12px; line-height:1.2; color:var(--muted);
       display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; overflow:hidden;
     }
-    .time { font-size:10px; color:var(--muted); border-top:1px solid var(--line); padding-top:2px; }
     .warn { display:inline-block; border:1px solid var(--line); padding:0 4px; font-size:9px; font-weight:700; line-height:1; align-self:flex-start; }
     .error { font-size:12px; line-height:1.1; }
     .noalert { font-size:18px; line-height:1.0; font-weight:700; }
@@ -36,16 +35,13 @@
     <div class="title">天氣警告一覽</div>
     <div id="status" class="status"></div>
     <div class="main" id="content"><div>讀取中…</div></div>
-    <div id="time" class="time">資料來源：香港天文台</div>
   </main>
 
   <script>
     const API_URL = 'https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=warningInfo&lang=tc';
     const contentEl = document.getElementById('content');
-    const timeEl = document.getElementById('time');
     const clean = s => (s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').replace(/。/g, ' ').trim();
     const shorten = (s, max) => !s ? '' : (s.length > max ? s.slice(0, max) + '…' : s);
-    const getTime = obj => ((JSON.stringify(obj || {}).match(/\b\d{1,2}:\d{2}\b/) || [])[0]) || '';
     const getTexts = obj => {
       const out = [];
       const walk = v => { if (!v || typeof v !== 'object') return; for (const val of Object.values(v)) { if (typeof val === 'string' && val.trim()) out.push(clean(val)); else if (val && typeof val === 'object') walk(val); } };
@@ -57,21 +53,17 @@
         <div class="noalert">現時無天氣警告</div>
         <div class="detail">香港現時並無天氣警告生效。</div>
       `;
-      const t = getTime(data);
-      timeEl.textContent = t ? `最後更新：${t}` : '最後更新：--:--';
     }
 
     function renderWarning(data) {
       const texts = getTexts(data);
       const headline = shorten(texts.find(t => /警告|信號|颱風|暴雨|雷暴|酷熱|寒冷|水浸|山泥傾瀉/.test(t)) || '有天氣警告生效', 18);
       const detail = shorten(texts.find(t => t !== headline) || headline, 26);
-      const t = getTime(data);
       contentEl.innerHTML = `
         <div class="warn">生效中</div>
         <div class="headline">${headline}</div>
         <div class="detail">${detail}</div>
       `;
-      timeEl.textContent = t ? `最後更新：${t}` : '最後更新：--:--';
     }
 
     async function loadWarning() {
@@ -84,7 +76,6 @@
         hasWarning ? renderWarning(data) : renderNoWarning(data);
       } catch (err) {
         contentEl.innerHTML = `<div class="error">未能讀取天文台資料。<br>${err.message}</div>`;
-        timeEl.textContent = '最後更新：--:--';
       }
     }
 
