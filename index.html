@@ -5,50 +5,130 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HK Weather Warning Card Minimal</title>
   <style>
-    :root { --bg:#fff; --fg:#000; --muted:#333; --line:#000; }
-    * { box-sizing:border-box; }
+    :root {
+      --bg: #fff;
+      --fg: #000;
+      --muted: #333;
+      --line: #000;
+    }
+
+    * { box-sizing: border-box; }
+
     html, body {
-      margin:0; padding:0; width:280px; height:120px; overflow:hidden;
-      background:var(--bg); color:var(--fg);
+      margin: 0;
+      padding: 0;
+      width: 280px;
+      min-height: 170px;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--fg);
       font-family: Arial, "Noto Sans TC", sans-serif;
     }
-    body { border:2px solid var(--line); border-radius:10px; padding:12px 14px; }
-    .wrap { height:100%; display:grid; grid-template-rows:auto auto 1fr; gap:8px; }
-    .title { font-size:15px; line-height:1.02; font-weight:700; border-bottom:2px solid var(--line); padding-bottom:6px; }
-    .status { display:none; }
-    .main { display:flex; flex-direction:column; gap:8px; overflow:hidden; }
+
+    body {
+      border: 2px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+
+    .wrap {
+      height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 8px;
+    }
+
+    .title {
+      font-size: 15px;
+      line-height: 1.02;
+      font-weight: 700;
+      border-bottom: 2px solid var(--line);
+      padding-bottom: 6px;
+    }
+
+    .main {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      overflow: hidden;
+    }
+
     .headline {
-      font-size:19px; line-height:1.0; font-weight:700;
-      display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; overflow:hidden;
+      font-size: 18px;
+      line-height: 1.1;
+      font-weight: 700;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
     }
+
     .detail {
-      font-size:12px; line-height:1.2; color:var(--muted);
-      display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; overflow:hidden;
+      font-size: 12px;
+      line-height: 1.25;
+      color: var(--muted);
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+      overflow: hidden;
     }
-    .warn { display:inline-block; border:1px solid var(--line); padding:0 4px; font-size:9px; font-weight:700; line-height:1; align-self:flex-start; }
-    .error { font-size:12px; line-height:1.1; }
-    .noalert { font-size:18px; line-height:1.0; font-weight:700; }
+
+    .error {
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .noalert {
+      font-size: 18px;
+      line-height: 1.05;
+      font-weight: 700;
+    }
+
+    .badge {
+      display: inline-block;
+      border: 1px solid var(--line);
+      padding: 0 4px;
+      font-size: 9px;
+      font-weight: 700;
+      line-height: 1.2;
+      align-self: flex-start;
+    }
   </style>
 </head>
 <body>
   <main class="wrap">
     <div class="title">天氣警告一覽</div>
-    <div id="status" class="status"></div>
-    <div class="main" id="content"><div>讀取中…</div></div>
+    <div id="content" class="main"><div>讀取中…</div></div>
   </main>
 
   <script>
     const API_URL = 'https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=warningInfo&lang=tc';
     const contentEl = document.getElementById('content');
-    const clean = s => (s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').replace(/。/g, ' ').trim();
-    const shorten = (s, max) => !s ? '' : (s.length > max ? s.slice(0, max) + '…' : s);
-    const getTexts = obj => {
-      const out = [];
-      const walk = v => { if (!v || typeof v !== 'object') return; for (const val of Object.values(v)) { if (typeof val === 'string' && val.trim()) out.push(clean(val)); else if (val && typeof val === 'object') walk(val); } };
-      walk(obj); return out.filter(Boolean);
-    };
 
-    function renderNoWarning(data) {
+    const clean = s => (s || '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/。/g, ' ')
+      .trim();
+
+    const shorten = (s, max) => !s ? '' : (s.length > max ? s.slice(0, max) + '…' : s);
+
+    const KEYWORDS = /警告|信號|颱風|暴雨|雷暴|酷熱|寒冷|水浸|山泥傾瀉|強風|熱帶氣旋|寒冷天氣/;
+
+    function getTexts(obj) {
+      const out = [];
+      const walk = v => {
+        if (!v || typeof v !== 'object') return;
+        for (const val of Object.values(v)) {
+          if (typeof val === 'string' && val.trim()) out.push(clean(val));
+          else if (val && typeof val === 'object') walk(val);
+        }
+      };
+      walk(obj);
+      return [...new Set(out.filter(Boolean))];
+    }
+
+    function renderNoWarning() {
       contentEl.innerHTML = `
         <div class="noalert">現時無天氣警告</div>
         <div class="detail">香港現時並無天氣警告生效。</div>
@@ -56,13 +136,17 @@
     }
 
     function renderWarning(data) {
-      const texts = getTexts(data);
-      const headline = shorten(texts.find(t => /警告|信號|颱風|暴雨|雷暴|酷熱|寒冷|水浸|山泥傾瀉/.test(t)) || '有天氣警告生效', 18);
-      const detail = shorten(texts.find(t => t !== headline) || headline, 26);
+      const texts = getTexts(data).filter(t => KEYWORDS.test(t));
+
+      const headline = shorten(texts[0] || '有天氣警告生效', 20);
+      const detailText = texts
+        .slice(1)
+        .find(t => t !== headline && !t.includes('生效中')) || '';
+
       contentEl.innerHTML = `
-        <div class="warn">生效中</div>
+        <div class="badge">生效中</div>
         <div class="headline">${headline}</div>
-        <div class="detail">${detail}</div>
+        <div class="detail">${shorten(detailText || headline, 80)}</div>
       `;
     }
 
@@ -71,9 +155,12 @@
         const res = await fetch(API_URL, { cache: 'no-store' });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
+
         const texts = getTexts(data);
-        const hasWarning = texts.some(t => /警告|信號|颱風|暴雨|雷暴|酷熱|寒冷|水浸|山泥傾瀉/.test(t));
-        hasWarning ? renderWarning(data) : renderNoWarning(data);
+        const hasWarning = texts.some(t => KEYWORDS.test(t));
+
+        if (hasWarning) renderWarning(data);
+        else renderNoWarning();
       } catch (err) {
         contentEl.innerHTML = `<div class="error">未能讀取天文台資料。<br>${err.message}</div>`;
       }
