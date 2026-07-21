@@ -18,7 +18,7 @@
       margin: 0;
       padding: 0;
       width: 280px;
-      min-height: 150px;
+      min-height: 120px;
       overflow: hidden;
       background: var(--bg);
       color: var(--fg);
@@ -49,7 +49,8 @@
     .main {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      justify-content: center;
+      gap: 0;
       overflow: hidden;
     }
 
@@ -61,37 +62,18 @@
       -webkit-box-orient: vertical;
       -webkit-line-clamp: 2;
       overflow: hidden;
-    }
-
-    .detail {
-      font-size: 15px;
-      line-height: 1.15;
-      color: var(--muted);
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 3;
-      overflow: hidden;
+      word-break: break-word;
     }
 
     .error {
-      font-size: 15px;
-      line-height: 1.15;
+      font-size: 12px;
+      line-height: 1.2;
     }
 
     .noalert {
       font-size: 15px;
       line-height: 1.15;
       font-weight: 700;
-    }
-
-    .badge {
-      display: inline-block;
-      border: 1px solid var(--line);
-      padding: 0 4px;
-      font-size: 15px;
-      font-weight: 700;
-      line-height: 1.15;
-      align-self: flex-start;
     }
   </style>
 </head>
@@ -131,22 +113,15 @@
     function renderNoWarning() {
       contentEl.innerHTML = `
         <div class="noalert">現時無天氣警告</div>
-        <div class="detail">香港現時並無天氣警告生效。</div>
       `;
     }
 
     function renderWarning(data) {
       const texts = getTexts(data).filter(t => KEYWORDS.test(t));
-
-      const headline = shorten(texts[0] || '有天氣警告生效', 20);
-      const detailText = texts
-        .slice(1)
-        .find(t => t !== headline && !t.includes('生效中')) || '';
+      const headline = shorten(texts[0] || '有天氣警告生效', 22);
 
       contentEl.innerHTML = `
-        <div class="badge">生效中</div>
         <div class="headline">${headline}</div>
-        <div class="detail">${shorten(detailText || headline, 80)}</div>
       `;
     }
 
