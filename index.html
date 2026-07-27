@@ -53,21 +53,22 @@
     .main {
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      justify-content: flex-start;
       gap: 0;
       overflow: hidden;
       font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif;
     }
 
     .headline {
-      font-size: 18px;
-      line-height: 1.15;
+      font-size: 15px;
+      line-height: 1.18;
       font-weight: 700;
       display: -webkit-box;
       -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
+      -webkit-line-clamp: 4;
       overflow: hidden;
       word-break: break-word;
+      white-space: normal;
     }
 
     .error {
@@ -76,9 +77,13 @@
     }
 
     .noalert {
-      font-size: 18px;
-      line-height: 1.15;
+      font-size: 15px;
+      line-height: 1.18;
       font-weight: 700;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+      overflow: hidden;
     }
   </style>
 </head>
@@ -95,10 +100,7 @@
     const clean = s => (s || '')
       .replace(/<[^>]*>/g, ' ')
       .replace(/\s+/g, ' ')
-      .replace(/。/g, ' ')
       .trim();
-
-    const shorten = (s, max) => !s ? '' : (s.length > max ? s.slice(0, max) + '…' : s);
 
     const KEYWORDS = /警告|信號|颱風|暴雨|雷暴|酷熱|寒冷|水浸|山泥傾瀉|強風|熱帶氣旋|寒冷天氣/;
 
@@ -123,10 +125,10 @@
 
     function renderWarning(data) {
       const texts = getTexts(data).filter(t => KEYWORDS.test(t));
-      const headline = shorten(texts[0] || '有天氣警告生效', 22);
+      const warningText = texts.join('　') || '有天氣警告生效';
 
       contentEl.innerHTML = `
-        <div class="headline">${headline}</div>
+        <div class="headline">${warningText}</div>
       `;
     }
 
