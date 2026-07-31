@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HK Weather Warning Card Minimal</title>
+  <title>HK Weather Warning Card 280x140</title>
   <style>
     :root {
       --bg: #fff;
@@ -18,7 +18,7 @@
       margin: 0;
       padding: 0;
       width: 280px;
-      min-height: 140px;
+      height: 140px;
       overflow: hidden;
       background: var(--bg);
       color: var(--fg);
@@ -31,14 +31,14 @@
     body {
       border: 2px solid var(--line);
       border-radius: 10px;
-      padding: 12px 14px;
+      padding: 10px 12px;
     }
 
     .wrap {
       height: 100%;
       display: grid;
-      grid-template-rows: auto 1fr auto;
-      gap: 8px;
+      grid-template-rows: auto 1fr;
+      gap: 6px;
     }
 
     .title {
@@ -52,29 +52,28 @@
     .main {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 4px;
       overflow: hidden;
     }
 
     .warning-line {
       font-size: 15px;
-      line-height: 1.2;
+      line-height: 1.14;
       font-weight: 700;
       word-break: break-word;
       white-space: normal;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 1;
+      overflow: hidden;
     }
 
-    .meta {
-      font-size: 11px;
-      line-height: 1.2;
+    .more-line {
+      font-size: 13px;
+      line-height: 1.12;
+      font-weight: 700;
       color: var(--muted);
-      border-top: 1px solid #bbb;
-      padding-top: 5px;
-    }
-
-    .error {
-      font-size: 12px;
-      line-height: 1.2;
+      margin-top: 2px;
     }
 
     .noalert {
@@ -82,19 +81,23 @@
       line-height: 1.18;
       font-weight: 700;
     }
+
+    .error {
+      font-size: 12px;
+      line-height: 1.2;
+    }
   </style>
 </head>
 <body>
   <main class="wrap">
     <div class="title">天氣警告一覽</div>
     <div id="content" class="main"><div>讀取中…</div></div>
-    <div id="meta" class="meta"></div>
   </main>
 
   <script>
     const API_URL = 'https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=warnsum&lang=tc';
     const contentEl = document.getElementById('content');
-    const metaEl = document.getElementById('meta');
+    const MAX_VISIBLE = 3;
 
     const clean = s => (s || '')
       .replace(/<[^>]*>/g, ' ')
@@ -132,41 +135,41 @@
       return code || '';
     }
 
-    function getLatestUpdateTime(items) {
-      const times = items
-        .map(item => item?.updateTime || item?.issueTime)
-        .filter(Boolean)
-        .map(t => new Date(t))
-        .filter(d => !isNaN(d.getTime()))
-        .sort((a, b) => b - a);
+    function buildLine(item) {
+      const text = humanizeWarning(item);
+      const issueTime = formatTime(item?.issueTime);
 
-      if (!times.length) return '';
-      const hh = String(times[0].getHours()).padStart(2, '0');
-      const mm = String(times[0].getMinutes()).padStart(2, '0');
-      return `${hh}:${mm}`;
+      if (!text) return '';
+      if (issueTime) return `${text}（${issueTime}起）`;
+      return text;
     }
 
     function renderNoWarning() {
       contentEl.innerHTML = `<div class="noalert">現時無天氣警告</div>`;
-      metaEl.textContent = '';
     }
 
     function renderWarnings(items) {
       const lines = items
-        .map(item => {
-          const text = humanizeWarning(item);
-          const issueTime = formatTime(item?.issueTime);
-          if (!text) return '';
-          if (issueTime) return `<div class="warning-line">${text}（${issueTime}起）</div>`;
-          return `<div class="warning-line">${text}</div>`;
-        })
-        .filter(Boolean)
+        .map(buildLine)
+        .filter(Boolean);
+
+      if (!lines.length) {
+        renderNoWarning();
+        return;
+      }
+
+      const visible = lines.slice(0, MAX_VISIBLE);
+      const remaining = lines.length - MAX_VISIBLE;
+
+      let html = visible
+        .map(text => `<div class="warning-line">${text}</div>`)
         .join('');
 
-      contentEl.innerHTML = lines || `<div class="noalert">現時無天氣警告</div>`;
+      if (remaining > 0) {
+        html += `<div class="more-line">另有 ${remaining} 項警告</div>`;
+      }
 
-      const latest = getLatestUpdateTime(items);
-      metaEl.textContent = latest ? `最後更新 ${latest}` : '';
+      contentEl.innerHTML = html;
     }
 
     async function loadWarning() {
@@ -185,7 +188,6 @@
         renderWarnings(items);
       } catch (err) {
         contentEl.innerHTML = `<div class="error">未能讀取天文台資料。<br>${err.message}</div>`;
-        metaEl.textContent = '';
       }
     }
 
