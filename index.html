@@ -18,7 +18,7 @@
       margin: 0;
       padding: 0;
       width: 280px;
-      min-height: 200px;
+      min-height: 140px;
       overflow: hidden;
       background: var(--bg);
       color: var(--fg);
@@ -54,7 +54,7 @@
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
-      gap: 0;
+      gap: 4px;
       overflow: hidden;
       font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif;
     }
@@ -65,7 +65,19 @@
       font-weight: 700;
       display: -webkit-box;
       -webkit-box-orient: vertical;
-      -webkit-line-clamp: 10;
+      -webkit-line-clamp: 6;
+      overflow: hidden;
+      word-break: break-word;
+      white-space: normal;
+    }
+
+    .warning-line {
+      font-size: 15px;
+      line-height: 1.18;
+      font-weight: 700;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
       overflow: hidden;
       word-break: break-word;
       white-space: normal;
@@ -94,7 +106,7 @@
   </main>
 
   <script>
-    const API_URL = 'https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=warningInfo&lang=tc';
+    const API_URL = 'https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=warnsum&lang=tc';
     const contentEl = document.getElementById('content');
 
     const clean = s => (s || '')
@@ -102,19 +114,14 @@
       .replace(/\s+/g, ' ')
       .trim();
 
-    const KEYWORDS = /警告|信號|颱風|暴雨|雷暴|酷熱|寒冷|水浸|山泥傾瀉|強風|熱帶氣旋|寒冷天氣/;
+    function buildWarningText(item) {
+      const name = clean(item?.name || '');
+      const type = clean(item?.type || '');
+      const code = clean(item?.code || '');
 
-    function getTexts(obj) {
-      const out = [];
-      const walk = v => {
-        if (!v || typeof v !== 'object') return;
-        for (const val of Object.values(v)) {
-          if (typeof val === 'string' && val.trim()) out.push(clean(val));
-          else if (val && typeof val === 'object') walk(val);
-        }
-      };
-      walk(obj);
-      return [...new Set(out.filter(Boolean))];
+      if (name && type) return `${name}：${type}`;
+      if (name && code) return `${name}：${code}`;
+      return name || type || code || '';
     }
 
     function renderNoWarning() {
@@ -123,32 +130,36 @@
       `;
     }
 
-    function renderWarning(data) {
-      const texts = getTexts(data).filter(t => KEYWORDS.test(t));
-      const warningText = texts.join('　') || '有天氣警告生效';
-
-      contentEl.innerHTML = `
-        <div class="headline">${warningText}</div>
-      `;
+    function renderWarnings(list) {
+      contentEl.innerHTML = list
+        .map(text => `<div class="warning-line">${text}</div>`)
+        .join('');
     }
 
     async function loadWarning() {
       try {
         const res = await fetch(API_URL, { cache: 'no-store' });
         if (!res.ok) throw new Error('HTTP ' + res.status);
+
         const data = await res.json();
 
-        const texts = getTexts(data);
-        const hasWarning = texts.some(t => KEYWORDS.test(t));
+        const warnings = Object.values(data || {})
+          .map(buildWarningText)
+          .filter(Boolean);
 
-        if (hasWarning) renderWarning(data);
-        else renderNoWarning();
+        if (warnings.length === 0) {
+          renderNoWarning();
+          return;
+        }
+
+        renderWarnings(warnings);
       } catch (err) {
         contentEl.innerHTML = `<div class="error">未能讀取天文台資料。<br>${err.message}</div>`;
       }
     }
 
     loadWarning();
+    setInterval(loadWarning, 60000);
   </script>
 </body>
 </html>
